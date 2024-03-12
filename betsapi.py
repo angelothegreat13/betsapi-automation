@@ -115,16 +115,20 @@ class BetsApiService:
 
     def __init__(self, bets_api: object = None):
         if bets_api is None:
-            bets_api = self._get_bets_api_instance()
-        self.bets_api = bets_api
+            bets_api = self._set_bets_api_instance()
+        self._bets_api = bets_api
 
-    def _get_bets_api_instance(self):
+    @staticmethod
+    def _set_bets_api_instance():
         if os.getenv('BETS_API_TEST_MODE').lower() == 'true':
             return BetsApiSampleHttpData()
         elif os.getenv('BETS_API_TEST_MODE').lower() == 'false':
             return BetsApiHttpData(HttpHelper())
         else:
             raise ValueError('Please set your BETS_API_TEST_MODE in .env')
+
+    def get_bets_api_instance(self):
+        return self._bets_api
 
     @staticmethod
     def save_bet365_inplay(inplays: Dict[str, Any]):
@@ -229,8 +233,7 @@ class BetsApiService:
             conn.rollback()
             print("Failed to insert record into bet365_upcoming_events table: ", error.msg)
 
-    @staticmethod
-    def sync_upcoming_events_pre_match_odds(upcoming_events: Dict[str, Any]):
+    def sync_upcoming_events_pre_match_odds(self, upcoming_events: Dict[str, Any]):
         if 'success' not in upcoming_events or upcoming_events['success'] != 1 or not upcoming_events['results']:
             print("Error: Failed to retrieve valid upcoming events data. Please check API response for 'success' status and 'results' availability.")
             return
@@ -244,7 +247,7 @@ class BetsApiService:
             league_name = event['league']['name'] if event['league'] is not None else None
 
             # fetch pre_match_odds filtered by event_id
-            pre_match_odds = bets_api.get_bet365_pre_match_odds({
+            pre_match_odds = self._bets_api.get_bet365_pre_match_odds({
                 "FI": event_id,
             })
             
@@ -278,8 +281,7 @@ class BetsApiService:
         # save bet365 upcoming events
         BetsApiService.save_multiple_bet365_upcoming_events(insert_events_data)
 
-    @staticmethod
-    def sync_filtered_inplays_events(inplays: Dict[str, Any]):
+    def sync_filtered_inplays_events(self, inplays: Dict[str, Any]):
         if 'success' not in inplays or inplays['success'] != 1 or not inplays['results']:
             print("Error: Failed to retrieve valid in-plays data. Please check API response for 'success' status and 'results' availability.")
             return
@@ -293,7 +295,7 @@ class BetsApiService:
             league_name = inplay['league']['name'] if inplay['league'] is not None else None
 
             # fetch inplay_events by inplay_id
-            inplay_events = bets_api.get_bet365_inplay_event({
+            inplay_events = self._bets_api.get_bet365_inplay_event({
                 "FI": inplay_id,
             })
 
@@ -326,46 +328,3 @@ class BetsApiService:
 
         # save bet365 inplay filters
         BetsApiService.save_multiple_bet365_inplay_filter(insert_inplays_data)
-
-
-bets_api_service = BetsApiService()
-bets_api = bets_api_service.bets_api
-
-for r_sport_id in r_sport_ids:
-    # get the inplays, filter inplays by r_sport_id and page
-    inplays = bets_api.get_bet365_inplay_filter({
-        "sport_id": r_sport_id,
-        "page": 1
-    })
-
-    bets_api_service.sync_filtered_inplays_events(inplays)
-    inplays_end_page = math.ceil(inplays['pager']['total'] / inplays['pager']['per_page'])
-
-    if inplays_end_page > 1:
-        for inplays_page in range(2, inplays_end_page + 1):
-            inplays = bets_api.get_bet365_inplay_filter({
-                "sport_id": r_sport_id,
-                "page": inplays_page
-            })
-
-            bets_api_service.sync_filtered_inplays_events(inplays)
-
-    # get upcoming events, filter it sport_id and page
-    upcoming_events = bets_api.get_bet365_upcoming_events({
-        "sport_id": r_sport_id,
-        "page": 1
-    })
-    
-    bets_api_service.sync_upcoming_events_pre_match_odds(upcoming_events)
-    upcoming_events_end_page = math.ceil(upcoming_events['pager']['total'] / upcoming_events['pager']['per_page'])
-
-    if upcoming_events_end_page > 1:
-        for events_page in range(2, upcoming_events_end_page + 1):
-            inplays = bets_api.get_bet365_inplay_filter({                        
-                "sport_id": r_sport_id,                                          
-                "page": events_page
-            })
-                                                                                 
-            bets_api_service.sync_upcoming_events_pre_match_odds(upcoming_events)
-
-    
