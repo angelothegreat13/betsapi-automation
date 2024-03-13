@@ -131,11 +131,18 @@ class BetsApiService:
         return self._bets_api
 
     @staticmethod
-    def save_bet365_inplay(inplays: Dict[str, Any]):
-        response_data = json.dumps(inplays)
-        query = "INSERT INTO bet365_inplays (response_data,created_at,updated_at) VALUES (%s, %s, %s)"
-        cursor.execute(query, (response_data, now, now))
-        conn.commit()
+    def save_bet365_inplay(inplays: str):
+        try:
+            query = """
+                INSERT INTO bet365_inplays 
+                (response_data,created_at,updated_at) 
+                VALUES (%s, %s, %s)"""
+            cursor.execute(query, (inplays, now, now))
+            conn.commit()
+            print(f"Bet365 in-play: {inplays[0:100]} successfully inserted into bet365_inplays table\n")
+        except mysql.connector.Error as error:
+            conn.rollback()
+            print("Failed to insert record into bet365_inplays table: ", error.msg)
 
     @staticmethod
     def save_multiple_bet365_pre_match_odds(pre_match_odds: List[tuple]):
@@ -150,7 +157,7 @@ class BetsApiService:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) """
             cursor.executemany(query, pre_match_odds)
             conn.commit()
-            print(f"Multiple pre-match odds successfully inserted into bet365_pre_match_odds table")
+            print(f"Multiple pre-match odds successfully inserted into bet365_pre_match_odds table\n")
         except mysql.connector.Error as error:
             conn.rollback()                                                                                                                                                                                 
             print("Failed to insert record into bet365_pre_match_odds table: ", error.msg)
@@ -168,7 +175,7 @@ class BetsApiService:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
             cursor.executemany(query, inplays)
             conn.commit()
-            print(f"Multiple filtered in-plays successfully inserted into bet365_inplay_filters table")
+            print(f"Multiple filtered in-plays successfully inserted into bet365_inplay_filters table\n")
         except mysql.connector.Error as error:
             conn.rollback()
             print("Failed to insert record into bet365_inplay_filters table: ", error.msg)
@@ -186,7 +193,7 @@ class BetsApiService:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
             cursor.executemany(query, upcoming_events)
             conn.commit()
-            print(f"Multiple Upcoming Events successfully inserted into bet365_upcoming_events table")
+            print(f"Multiple Upcoming Events successfully inserted into bet365_upcoming_events table\n")
         except mysql.connector.Error as error:
             conn.rollback()
             print("Failed to insert record into bet365_upcoming_events table: ", error.msg)
@@ -200,7 +207,7 @@ class BetsApiService:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s) """
             cursor.execute(query, (fi, event_id, sport_id, league_id, league_name, pre_match_odds, now, now))
             conn.commit()
-            print(f"Pre-match Odds: {fi} successfully inserted into bet365_pre_match_odds table")
+            print(f"Pre-match Odds: {fi} successfully inserted into bet365_pre_match_odds table\n")
         except mysql.connector.Error as error:
             conn.rollback()
             print("Failed to insert record into bet365_pre_match_odds table: ", error.msg)
@@ -214,7 +221,7 @@ class BetsApiService:
                 VALUES (%s, %s, %s, %s, %s, %s, %s) """        
             cursor.execute(query, (inplay_id, sport_id, league_id, league_name, events, now, now))        
             conn.commit()
-            print(f"Inplay Event: {inplay_id} successfully inserted into bet365_inplay_events table")
+            print(f"Inplay Event: {inplay_id} successfully inserted into bet365_inplay_events table\n")
         except mysql.connector.Error as error:
             conn.rollback()        
             print("Failed to insert record into bet365_inplay_events table: ", error.msg)
@@ -228,7 +235,7 @@ class BetsApiService:
                 VALUES (%s, %s, %s, %s, %s, %s, %s) """
             cursor.execute(query, (inplay_id, sport_id, league_id, league_name, events, now, now))
             conn.commit()
-            print(f"Upcoming Event: {inplay_id} successfully inserted into bet365_inplay_events table")
+            print(f"Upcoming Event: {inplay_id} successfully inserted into bet365_inplay_events table\n")
         except mysql.connector.Error as error:
             conn.rollback()
             print("Failed to insert record into bet365_upcoming_events table: ", error.msg)
